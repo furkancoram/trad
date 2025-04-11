@@ -9,7 +9,7 @@ from data_feed import get_realtime_data
 app = Flask(__name__)
 CORS(app)
 
-# Redis bağlantısı
+# Redis bağlantı ayarı (Render için)
 app.config['REDIS_URL'] = os.environ.get('REDIS_URL')
 app.register_blueprint(sse, url_prefix='/stream')
 
@@ -17,18 +17,19 @@ app.register_blueprint(sse, url_prefix='/stream')
 def index():
     return 'Real-time Financial Chart Backend'
 
-# Arka planda veri gönderen thread
+# Gerçek zamanlı veriyi SSE ile frontend'e yollayan thread
 def push_data():
     while True:
         try:
-            data = get_realtime_data("BTCUSDT")  # Sembol istersen dinamik yaparız
+            data = get_realtime_data("BTCUSDT")  # Coin sembolü burada sabit, istersen kullanıcıya açarız
             sse.publish({"price": data['price'], "volume": data['volume']}, type='update')
-            time.sleep(2)
+            print(f"Gönderildi: {data}")  # Debug log
+            time.sleep(2)  # 2 saniyede bir güncelle
         except Exception as e:
-            print(f"Veri gönderilirken hata oluştu: {e}")
+            print(f"[HATA] Veri gönderiminde sorun: {e}")
             time.sleep(5)
 
 if __name__ == '__main__':
     threading.Thread(target=push_data).start()
-    port = int(os.environ.get("PORT", 5000))  # Render ortamı için PORT değişkeni
+    port = int(os.environ.get("PORT", 10000))  # Render sunucusu buradan portu belirliyor
     app.run(debug=True, threaded=True, host='0.0.0.0', port=port)
